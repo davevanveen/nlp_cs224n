@@ -130,6 +130,7 @@
 \vspace{-.7in}
 
 \begin{center}
+    \large{\textbf{Author}: Dave Van Veen} \\
     \large{\textbf{Due on} Tuesday Jan. 24, 2023 by \textbf{4:30pm (before class)}}
 \end{center}
 
@@ -188,6 +189,9 @@ Your answer should be one line. You may describe your answer in words.
 \begin{shaded}
 \begin{answer}
 
+$$-\sum_{w \in \text{Vocab}} \bm y_w \log(\hat{\bm y}_w) = - \bm y_0 \log(\hat{\bm y}_0) = - \bm \log(\hat{\bm y}_0)$$
+because $\bm y$ is one-hot encoded, thus $\bm y_0 = 1$ for $k=0$, else $\bm y_w = 0$
+
 \end{answer}
 \end{shaded}
 
@@ -213,7 +217,32 @@ Hint: Consider the case where $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some words
 
 \begin{shaded}
 \begin{answer}
+$$\bm J_{\text{naive-softmax}}(\bm v_c, o, \bm U)
+= -\log P(O=o| C=c) 
+= - \frac{\exp(\bm u_{o}^\top \bm v_c)}{\sum_{w} \exp(\bm u_{w}^\top \bm v_c)}
+= - \bm u_{o}^\top \bm v_c + \log  \sum_{w \in \text{Vocab}} \exp(\bm u_{w}^\top \bm v_c) $$
+\end{answer}
+\end{shaded}
 
+\begin{shaded}
+\begin{answer}
+\begin{align}
+\frac{\partial J(\bm v_c, o, \bm U)}{\partial v_c}
+&= - u_o + \frac{1}{\sum_{w} \exp(\bm u_{w}^\top \bm v_c)} * \sum_{w} u_w^\top \exp(\bm u_{w}^\top \bm v_c) \\
+&= - u_o + \sum_{w} u_w^\top \frac{\exp(\bm u_{w}^\top \bm v_c)}{\sum_{w} \exp(\bm u_{w}^\top \bm v_c)} \\
+&= - u_o + \sum_{w} u_w^\top \hat{y}_w \\
+&= - u_o + U \hat{y} \\
+&= - Uy + U \hat{y} &~ \mbox{because $y$ one-hot encoded} \\
+&= U(\hat{y} - y)
+\end{align}
+
+(ii) The gradient is zero when $\hat{y} = y$, i.e. when the prediction matches the true distribution.
+
+(iii) Say we want to perform a gradient step with step size $\eta$ by computing
+$$v_c - \eta \frac{\partial J}{\partial v_c} = v_c - \eta U(\hat{y} - y) = v_c - \eta (\sum_w u_w^\top \hat{y}_w - u_o)$$
+If $u_o < \sum_w u_w^\top \hat{y}_w$, then the gradient is positive, and we need to place more probability mass on that word vector. The converse is also true.
+
+(iv) Normalizing via the operation $\mathbf{u}/||\mathbf{u}||_2$ is akin to projecting the vector $\mathbf{u}$ onto the L2 (Euclidean) ball. This is often very useful to keep values within a certain range of 0 to 1. However, we lose information on the magnitude of $\mathbf{u}$. Hence if we had an instance where all that differed between two vectors was their magnitude i.e. $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some scalar $\alpha$, then L2 normalization would project these vectors to be the same. 
 \end{answer}
 \end{shaded}
 
@@ -222,7 +251,31 @@ Hint: Consider the case where $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some words
 
 \begin{shaded}
 \begin{answer}
+$$\bm J_{\text{naive-softmax}}(\bm v_c, o, \bm U)
+= -\log P(O=o| C=c) 
+= - \frac{\exp(\bm u_{o}^\top \bm v_c)}{\sum_{w} \exp(\bm u_{w}^\top \bm v_c)}
+= - \bm u_{o}^\top \bm v_c + \log  \sum_{w \in \text{Vocab}} \exp(\bm u_{w}^\top \bm v_c) $$
 
+\begin{align}
+\frac{\partial J(\bm v_c, o, \bm U)}{\partial u_w}
+&= - \frac{\partial}{\partial u_w} u_o^\top v_c + \frac{1}{\sum_w \exp(\bm u_{w}^\top \bm v_c)} * \frac{\partial}{\partial u_w} \sum_{w} \exp(\bm u_{w}^\top \bm v_c) \\
+&= - \frac{\partial}{\partial u_w} u_o^\top v_c + \frac{\exp(\bm u_{w}^\top \bm v_c)}{\sum_w \exp(\bm u_{w}^\top \bm v_c)} v_c \\
+&= - \frac{\partial}{\partial u_w} u_o^\top v_c + \hat{y}_w v_c \\
+&= -y_wv _c + \hat{y}_w v_c \\
+&= (\hat{y}_w - y_w) v_c \\
+\end{align}
+\end{answer}
+\end{shaded}
+\begin{shaded}
+\begin{answer} \\
+where 
+\[
+   y_w =
+\begin{cases}
+    1     & \text{if } w = o \\
+    0     & \text{if } w \neq o
+\end{cases}
+\]
 \end{answer}
 \end{shaded}
 
@@ -230,8 +283,11 @@ Hint: Consider the case where $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some words
 \item (1 point) Write down the partial derivative of $\bm J_{\text{naive-softmax}}(\bm v_c, o, \bm U)$ with respect to $\bm U$. Please break down your answer in terms of the column vectors $\frac{\partial \bm J(\bm v_c, o, \bm U)}{\partial \bm u_1}$, $\frac{\partial \bm J(\bm v_c, o, \bm U)}{\partial \bm u_2}$, $\cdots$, $\frac{\partial \bm J(\bm v_c, o, \bm U)}{\partial \bm u_{|\text{Vocab}|}}$. No derivations are necessary, just an answer in the form of a matrix.
 
 \begin{shaded}
-\begin{answer}
-
+\begin{answer} \\
+First, we have
+$$ \frac{\bm J_{\text{naive-softmax}}(\bm v_c, o, \bm U)}{\partial u_k} = (\hat{y}_k - y_k) v_c, \; \; \; \; k = 1, 2, ..., | \text{Vocab}|$$
+Hence
+$$ \frac{\bm J_{\text{naive-softmax}}(\bm v_c, o, \bm U)}{U} = \left[\frac{\bm J(\bm v_c, o, \bm U)}{\partial u_1},  \frac{\bm J(\bm v_c, o, \bm U)}{\partial u_2}, ..., \frac{\bm J(\bm v_c, o, \bm U)}{\partial u_{| \text{Vocab} |}} \right] = (\hat{y} - y) v^\top_c $$
 \end{answer}
 \end{shaded}
 
@@ -252,8 +308,15 @@ Hint: Consider the case where $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some words
 Where $x$ is a scalar and $0<\alpha <1$, please compute the derivative of $f(x)$ with respect to $x$. You may ignore the case where the derivative is not defined at 0.\footnote{If you're interested in how to handle the derivative at this point, you can read more about the notion of \hyperref[https://en.wikipedia.org/wiki/Subderivative]{subderivatives}.}
 
 \begin{shaded}
-\begin{answer}
-
+\begin{answer} \\
+\[
+   \frac{\partial f}{\partial x} =
+\begin{cases}
+    \alpha^*     & \text{if } x < 0 \\
+    \text{undefined} & \text{if } x = 0 \\
+    1           & \text{if } x > 0
+\end{cases}
+\]
 \end{answer}
 \end{shaded}
 
@@ -268,8 +331,13 @@ Where $x$ is a scalar and $0<\alpha <1$, please compute the derivative of $f(x)$
 Please compute the derivative of $\sigma(x)$ with respect to $x$, where $x$ is a scalar. Please write your answer in terms of $\sigma(x)$. Show your work to receive full credit.
 
 \begin{shaded}
-\begin{answer}
-
+\begin{answer} \\
+$\frac{\partial \sigma(x)}{\partial x}
+= \frac{\partial}{\partial x} (1 + e^{-x})^{-1}
+= -1(1+e^{-x})^{-2} * e^{-x} * -1
+= \frac{1}{1+e^{-x}} * \frac{e^{-x}}{1+e^{-x}}
+\stackrel{\text{(f.1)}}{=}  \sigma(x) (1 - \sigma(x))$, \\ \\
+applying (f.1): $1 - \sigma(x) = \frac{1+e^{-x}}{1+e^{-x}} - \frac{1}{1+e^{-x}} =  \frac{e^{-x}}{1+e^{-x}}$  \\ \\
 \end{answer}
 \end{shaded}
 
@@ -294,8 +362,36 @@ Additional terms and functions (other than $\bm{U}_{o, \{w_1, \dots, w_K\}}$ and
 Caveat: So far we have looked at re-using quantities and approximating softmax with sampling for faster gradient descent. Do note that some of these optimizations might not be necessary on modern GPUs and are, to some extent, artifacts of the limited compute resources available at the time when these algorithms were developed.
 
 \begin{shaded}
-\begin{answer}
+\begin{answer} \\
+(i) \\
+\begin{align}
+\frac{\partial\bm J_{\text{neg-sample}}(\bm v_c, o, \bm U)}{\partial v_c} 
+&= -\frac{\partial}{\partial v_c} \log(\sigma(\bm u_o^\top \bm v_c)) - \frac{\partial}{\partial v_c} \sum_{s=1}^K \log(\sigma(-\bm u_{w_s}^\top \bm v_c)) \\
+&= -\frac{1}{\log(\sigma(\bm u_o^\top \bm v_c))} * (\log(\sigma(\bm u_o^\top \bm v_c)))(1 - \log(\sigma(\bm u_o^\top \bm v_c))) u_o - \frac{\partial}{\partial v_c} \sum_{s=1}^K \log(\sigma(-\bm u_{w_s}^\top \bm v_c)) \\
+&= (1 - \log(\sigma(\bm u_o^\top \bm v_c))) u_o - \frac{\partial}{\partial v_c} \sum_{s=1}^K \log(\sigma(-\bm u_{w_s}^\top \bm v_c)) \\
+&= (1 - \log(\sigma(\bm u_o^\top \bm v_c))) u_o - \sum_{s=1}^K (1 - \sigma(-\bm u_{w_s}^\top \bm v_c)) \frac{\partial}{\partial v_c} (-u^\top_{w_s} v_c) \\
+&= (1 - \log(\sigma(\bm u_o^\top \bm v_c))) u_o + \sum_{s=1}^K (1 - \sigma(-\bm u_{w_s}^\top \bm v_c)) u_{w_s}
+\end{align}
 
+\begin{align}
+\frac{\partial\bm J_{\text{neg-sample}}(\bm v_c, o, \bm U)}{\partial u_o} 
+&= -\frac{\partial}{\partial u_o} \log(\sigma(\bm u_o^\top \bm v_c)) \\
+&= - (1 - \sigma(\bm u_o^\top \bm v_c)) v_c   &~ \mbox{following lines in $\frac{\partial J}{\partial v_c}$} \\
+&= - 1 + \sigma(\bm u_o^\top \bm v_c)) v_c
+\end{align}
+
+\begin{align}
+\frac{\partial\bm J_{\text{neg-sample}}(\bm v_c, o, \bm U)}{\partial u_{w_s}} 
+&= -\frac{\partial}{\partial u_{w_s}} \sum_{s=1}^K \log(\sigma(-\bm u_{w_s}^\top \bm v_c))  \\
+&= \sum_{s=1}^K (1 - \sigma(-\bm u_{w_s}^\top \bm v_c)) u_{w_s}  &~ \mbox{following lines in $\frac{\partial J}{\partial v_c}$} 
+\end{align}
+
+(ii) \\
+Intuitively we can re-use the first and second terms in $\frac{\partial\bm J}{\partial v_c}$ for computing $\frac{\partial\bm J}{\partial u_o} $ and $\frac{\partial\bm J}{\partial u_{w_s}}$, respectively.
+Hence given the definitions above, this can be written as $\bm{1} - \sigma(\bm{U}_{o, \{w_1, \dots, w_K\}}^\top v_c)$ \\
+
+(iii) \\
+This avoids the flaw in naive softmax, which requires many vector products to be re-calculated since the gradient involves a sum over all words. 
 \end{answer}
 \end{shaded}
 
@@ -313,7 +409,14 @@ Compute the partial derivative of $\bm J_{\text{neg-sample}}$ with respect to a 
 
 \begin{shaded}
 \begin{answer}
-
+\begin{align}
+\frac{\partial\bm J_{\text{neg-sample}}(\bm v_c, o, \bm U)}{\partial u_{w_s}} 
+&= -\frac{\partial}{\partial u_{w_s}} \sum_{s=1}^K \log(\sigma(-\bm u_{w_s}^\top \bm v_c))  \\
+&= -\frac{\partial}{\partial u_{w_s}} \sum_{\substack{x=1..K \\ w_x = w_s}} \log(\sigma(-\bm u_{w_x}^\top \bm v_c)) -\frac{\partial}{\partial u_{w_s}} \sum_{\substack{x=1..K \\ w_x \neq w_s}} \log(\sigma(-\bm u_{w_x}^\top \bm v_c)) \\
+&= -\frac{\partial}{\partial u_{w_s}} \sum_{\substack{x=1..K \\ w_x = w_s}} \log(\sigma(-\bm u_{w_x}^\top \bm v_c)) \\
+&= \sum_{\substack{x=1..K \\ w_x = w_s}} (1 - \sigma(-\bm u_{w_x}^\top \bm v_c)) v_c \\
+&= \sum_{x=1..K} \mathbbm{1}_{\{ u_{w_x} = u_{w_s}  \}} (1 - \sigma(-\bm u_{w_x}^\top \bm v_c)) v_c
+\end{align}
 \end{answer}
 \end{shaded}
 
@@ -336,7 +439,11 @@ Write your answers in terms of ${\frac{\partial \bm J(\bm v_c, w_{t+j}, \bm U)}{
 
 \begin{shaded}
 \begin{answer}
-
+\begin{enumerate}[label=(\roman*)]
+    \item $${\frac{\partial \bm J_{\textrm{skip-gram}}(\bm v_c, w_{t-m},\ldots w_{t+m}, \bm U)} {\partial \bm U}} = \sum_{\substack{-m \leq j \leq m \\ j \neq 0}} \frac{\partial \bm J(\bm v_c, w_{t+j}, \bm U)}{\partial \bm U}$$
+    \item $${\frac{\partial \bm J_{\textrm{skip-gram}}(\bm v_c, w_{t-m},\ldots w_{t+m}, \bm U)} {\partial \bm v_c}} = \sum_{\substack{-m \leq j \leq m \\ j \neq 0}} \frac{\partial \bm J(\bm v_c, w_{t+j}, \bm U)}{\partial \bm v_c}$$
+    \item $${\frac{\partial \bm J_{\textrm{skip-gram}}(\bm v_c, w_{t-m},\ldots w_{t+m}, \bm U)} {\partial \bm v_w}} = 0 \; \; \; \; \text{when } w \neq c$$
+\end{enumerate}
 \end{answer}
 \end{shaded}
 
@@ -383,10 +490,17 @@ Note: If you are using Windows and have trouble running the .sh scripts used in 
     \emph{Note: The training process may take a long time depending on the efficiency of your implementation and the compute power of your machine \textbf{(an efficient implementation takes one to two hours)}. Plan accordingly!}
     
     After 40,000 iterations, the script will finish and a visualization for your word vectors will appear. It will also be saved as \texttt{word\_vectors.png} in your project directory. \textbf{Include the plot in your homework write up.} In at most three sentences, briefly explain what you see in the plot. This may include, but is not limited to, observations on clusters and words that you expect to cluster but do not.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{word_vectors.png}
+    \caption{Word vectors visualization from Q2c}
+    \label{fig:word_vecs}
+\end{figure}
     
 \begin{shaded}
 \begin{answer}
-
+This plot visualizes words by plotting them according to the first and second principal components. There are both groupings which make sense because they are similar (rain/snow, amazing/wonderful) and groupings which are different (enjoyable/annoying, boring/great)---although perhaps this also makes sense, as the words would be used in similar context. Lastly, I notice that male:king is roughly the same direction as female:queen.
 \end{answer}
 \end{shaded}
 

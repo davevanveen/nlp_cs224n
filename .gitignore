@@ -1,4 +1,6 @@
 .DS_Store
 **/_*
 **/.ipynb_checkpoints
-**/*.pdf
+a1/*.pdf
+**/*.npy
+**/*.pickle
