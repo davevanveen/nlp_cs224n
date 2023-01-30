@@ -4,3 +4,4 @@
 a1/*.pdf
 **/*.npy
 **/*.pickle
+**/*.zip
