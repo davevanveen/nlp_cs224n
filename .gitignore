@@ -5,3 +5,12 @@ a1/*.pdf
 **/*.npy
 **/*.pickle
 **/*.zip
+
+a3/data/
+a3/results/
+
+a4/*.bat
+a4/*.model
+a4/*.vocab
+a4/zh_en_data
+a4/sanity_check_en_es_data

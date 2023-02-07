@@ -1,0 +1,147 @@
+\graphicspath{ {images/} }
+
+\titledquestion{Analyzing NMT Systems}[25]
+
+\begin{parts}
+
+    \part[3] Look at the {\monofam{src.vocab}} file for some examples of phrases and words in the source language vocabulary. When encoding an input Mandarin Chinese sequence into ``pieces'' in the vocabulary, the tokenizer maps the sequence to a series of vocabulary items, each consisting of one or more characters (thanks to the {\monofam{sentencepiece}} tokenizer, we can perform this segmentation even when the original text has no white space). Given this information, how could adding a 1D Convolutional layer after the embedding layer and before passing the embeddings into the bidirectional encoder help our NMT system? \textbf{Hint:} each Mandarin Chinese character is either an entire word or a morpheme in a word. Look up the meanings of 电, 脑, and 电脑 separately for an example. The characters 电 (electricity) and  脑 (brain) when combined into the phrase 电脑 mean computer.
+
+    \ifans{A convolution is a window that slides over multiple pieces of the input; in this case it creates a relationship between adjacent character embeddings. Incorporating this dependence is crucial for translating Chinese, because often multiple Chinese characters are used to create the semantic meaning of one word, by looking at different lines of {\monofam{src.vocab}}.}
+
+
+    \part[8] Here we present a series of errors we found in the outputs of our NMT model (which is the same as the one you just trained). For each example of a reference (i.e., `gold') English translation, and NMT (i.e., `model') English translation, please:
+    
+    \begin{enumerate}
+        \item Identify the error in the NMT translation.
+        \item Provide possible reason(s) why the model may have made the error (either due to a specific linguistic construct or a specific model limitation).
+        \item Describe one possible way we might alter the NMT system to fix the observed error. There are more than one possible fixes for an error. For example, it could be tweaking the size of the hidden layers or changing the attention mechanism.
+    \end{enumerate}
+    
+    Below are the translations that you should analyze as described above. Only analyze the underlined error in each sentence. Rest assured that you don't need to know Mandarin to answer these questions. You just need to know English! If, however, you would like some additional color on the source sentences, feel free to use a resource like \url{https://www.archchinese.com/chinese_english_dictionary.html} to look up words. Feel free to search the training data file to have a better sense of how often certain characters occur.
+
+    \begin{subparts}
+        \subpart[2]
+        \textbf{Source Sentence:} 贼人其后被警方拘捕及被判处盗窃罪名成立。 \newline
+        \textbf{Reference Translation:} \textit{\underline{the culprits were} subsequently arrested and convicted.}\newline
+        \textbf{NMT Translation:} \textit{\underline{the culprit was} subsequently arrested and sentenced to theft.}
+        
+        \ifans{(1) The NMT model incorrectly translates ``culprits'' to be singular instead of plural. (2) I hypothesize that singular and plural forms of words have very similar embeddings. (3) Perhaps one could adjust the embedding such that it explicitly encodes nouns as singular of plural.}
+
+
+        \subpart[2]
+        \textbf{Source Sentence}: 几乎已经没有地方容纳这些人,资源已经用尽。\newline
+        \textbf{Reference Translation}: \textit{there is almost no space to accommodate these people, and resources have run out.   }\newline
+        \textbf{NMT Translation}: \textit{the resources have been exhausted and \underline{resources have been exhausted}.}
+        
+        \ifans{(1) ``resources have been exhausted'' is repeated twice instead of directly translating the first clause pertaining to the people. (2) This is referred to as neural text degeneration, where using likelihood as a training objective leads to repetitive outcomes. (3) One way to fix this might be regularizing the model against creating repetitive words and phrases; although in the case of only two repeats, this might be difficult.}
+
+        \subpart[2]
+        \textbf{Source Sentence}: 当局已经宣布今天是国殇日。 \newline
+        \textbf{Reference Translation}: \textit{authorities have announced \underline{a national mourning today.}}\newline
+        \textbf{NMT Translation}: \textit{the administration has announced \underline{today's day.}}
+        
+        \ifans{(1) The NMT model incorrectly translates ``a national mourning today'' to ``today's day'', which doesn't make any sense. (2) Perhaps ``a national mourning'' is an obscure English phrase in and of itself. Personally I'd be more comfortable with ``a national day of mourning.'' (3) This may be solved with more training data of obscure examples of phrases which do not easily map from Chinese to English.}
+        
+        \subpart[2] 
+        \textbf{Source Sentence\footnote{This is a Cantonese sentence! The data used in this assignment comes from GALE Phase 3, which is a compilation of news written in simplified Chinese from various sources scraped from the internet along with their translations. For more details, see \url{https://catalog.ldc.upenn.edu/LDC2017T02}. }:} 俗语有云:``唔做唔错"。\newline
+        \textbf{Reference Translation:} \textit{\underline{`` act not, err not "}, so a saying goes.}\newline
+        \textbf{NMT Translation:} \textit{as the saying goes, \underline{`` it's not wrong. "}}
+        
+        \ifans{(1) ``act not, err not'' is an idiom, which the NMT model is unable to interpret; it incorrectly translates this phrase's semantic meaning to ``it's not wrong,'' which in my opinion is a fair guess. (2) This Shakespeare-esque is quite abnormal by today's language standards and also the context of the rest of the sentence. If quotes are involved, it's likely that we see a discontinuity in style of speech (3) If quotes are involved, perhaps relax the dependency of the model on adjacent context.}
+    \end{subparts}
+
+
+    \part[14] BLEU score is the most commonly used automatic evaluation metric for NMT systems. It is usually calculated across the entire test set, but here we will consider BLEU defined for a single example.\footnote{This definition of sentence-level BLEU score matches the \texttt{sentence\_bleu()} function in the \texttt{nltk} Python package. Note that the NLTK function is sensitive to capitalization. In this question, all text is lowercased, so capitalization is irrelevant. \\ \url{http://www.nltk.org/api/nltk.translate.html\#nltk.translate.bleu_score.sentence_bleu}
+    } 
+    Suppose we have a source sentence $\bs$, a set of $k$ reference translations $\br_1,\dots,\br_k$, and a candidate translation $\bc$. To compute the BLEU score of $\bc$, we first compute the \textit{modified $n$-gram precision} $p_n$ of $\bc$, for each of $n=1,2,3,4$, where $n$ is the $n$ in \href{https://en.wikipedia.org/wiki/N-gram}{n-gram}:
+    \begin{align}
+        p_n = \frac{ \displaystyle \sum_{\text{ngram} \in \bc} \min \bigg( \max_{i=1,\dots,k} \text{Count}_{\br_i}(\text{ngram}), \enspace \text{Count}_{\bc}(\text{ngram}) \bigg) }{\displaystyle \sum_{\text{ngram}\in \bc} \text{Count}_{\bc}(\text{ngram})}
+    \end{align}
+     Here, for each of the $n$-grams that appear in the candidate translation $\bc$, we count the maximum number of times it appears in any one reference translation, capped by the number of times it appears in $\bc$ (this is the numerator). We divide this by the number of $n$-grams in $\bc$ (denominator). \newline 
+
+    Next, we compute the \textit{brevity penalty} BP. Let $len(c)$ be the length of $\bc$ and let $len(r)$ be the length of the reference translation that is closest to $len(c)$ (in the case of two equally-close reference translation lengths, choose $len(r)$ as the shorter one). 
+    \begin{align}
+        BP = 
+        \begin{cases}
+            1 & \text{if } len(c) \ge len(r) \\
+            \exp \big( 1 - \frac{len(r)}{len(c)} \big) & \text{otherwise}
+        \end{cases}
+    \end{align}
+    Lastly, the BLEU score for candidate $\bc$ with respect to $\br_1,\dots,\br_k$ is:
+    \begin{align}
+        BLEU = BP \times \exp \Big( \sum_{n=1}^4 \lambda_n \log p_n \Big)
+    \end{align}
+    where $\lambda_1,\lambda_2,\lambda_3,\lambda_4$ are weights that sum to 1. The $\log$ here is natural log.
+    \newline
+    \begin{subparts}
+        \subpart[5] Please consider this example: \newline
+        Source Sentence $\bs$: \textbf{需要有充足和可预测的资源。} 
+        \newline
+        Reference Translation $\br_1$: \textit{resources have to be sufficient and they have to be predictable}
+        \newline
+        Reference Translation $\br_2$: \textit{adequate and predictable resources are required}
+        
+        NMT Translation $\bc_1$: there is a need for adequate and predictable resources
+        
+        NMT Translation $\bc_2$: resources be suﬀicient and predictable to
+        
+        Please compute the BLEU scores for $\bc_1$ and $\bc_2$. Let $\lambda_i=0.5$ for $i\in\{1,2\}$ and $\lambda_i=0$ for $i\in\{3,4\}$ (\textbf{this means we ignore 3-grams and 4-grams}, i.e., don't compute $p_3$ or $p_4$). When computing BLEU scores, show your work (i.e., show your computed values for $p_1$, $p_2$, $len(c)$, $len(r)$ and $BP$). Note that the BLEU scores can be expressed between 0 and 1 or between 0 and 100. The code is using the 0 to 100 scale while in this question we are using the \textbf{0 to 1} scale. Please round your responses to 3 decimal places. 
+        \newline
+        
+        Which of the two NMT translations is considered the better translation according to the BLEU Score? Do you agree that it is the better translation?
+        
+        \ifans{
+            \begin{itemize}
+                \item $\bc_1$
+                \begin{itemize}
+                    \item $[p_1, p_2] = [0.444, 0.375]$
+                    \item $[len(c), len(r)] = [9, 11]$
+                    \item $BP = 0.801$
+                    \item $\text{BLEU} = 0.327$
+                \end{itemize}
+                \item $\bc_2$
+                \begin{itemize}
+                    \item $[p_1, p_2] = [1.0, 0.6]$
+                    \item $[len(c), len(r)] = [6, 6]$
+                    \item $BP = 1$
+                    \item $\text{BLEU} = 0.775$
+                \end{itemize}
+            \end{itemize}  
+
+            According to BLEU, $\bc_2$ is better. I do not agree this is better, though. It's not a proper sentence; it's just a string of words with high n-gram overlap.
+        }
+        
+        \subpart[5] Our hard drive was corrupted and we lost Reference Translation $\br_1$. Please recompute BLEU scores for $\bc_1$ and $\bc_2$, this time with respect to $\br_2$ only. Which of the two NMT translations now receives the higher BLEU score? Do you agree that it is the better translation?
+        
+        \ifans{
+            \begin{itemize}
+                \item $\bc_1$
+                \begin{itemize}
+                    \item $[p_1, p_2] = [0.444, 0.375]$
+                    \item $[len(c), len(r)] = [9, 11]$
+                    \item $BP = 0.801$
+                    \item $\text{BLEU} = 0.327$
+                \end{itemize}
+                \item $\bc_2$
+                \begin{itemize}
+                    \item $[p_1, p_2] = [0.5, 0.2]$
+                    \item $[len(c), len(r)] = [6, 11]$
+                    \item $BP = 0.435$
+                    \item $\text{BLEU} = 0.138$
+                \end{itemize}
+            \end{itemize}  
+
+            According to BLEU, $\bc_1$ is better. I agree with this, although it's an interesting instance where fewer reference translations actually result in more sensible output.
+            
+        }
+        
+        \subpart[2] Due to data availability, NMT systems are often evaluated with respect to only a single reference translation. Please explain (in a few sentences) why this may be problematic. In your explanation, discuss how the BLEU score metric assesses the quality of NMT translations when there are multiple reference transitions versus a single reference translation.
+        
+        \ifans{If the one reference translation is poor, then BLEU has a bad comparison; even if the single reference translation is high quality, BLEU may not capture perfectly reasonable variance in the output sentence structure, word ordering, etc. BLEU benefits from multiple references by leveraging the ``max'' operator across many references, hence creating more opportunity for the ``min'' output to be non-zero. This gives us a more statistically significant score.}
+        
+        \subpart[2] List two advantages and two disadvantages of BLEU, compared to human evaluation, as an evaluation metric for Machine Translation. 
+        
+        \ifans{Advantages of BLEU are that it's (1) cheap and (2) reproducible, i.e. does not depend on the variance across human evaluation. Disadvantages are that it (1) is usually relies on a single reference, while humans can pull from many possible references and (2) cannot catch different words which are semantically equivalent, such as ``can not'' and ``cannot,'' which a human would easily recognize.}
+        
+    \end{subparts}
+\end{parts}
