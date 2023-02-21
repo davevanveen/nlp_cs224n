@@ -1,4 +1,6 @@
+import numpy as np
 import random
+import math
 import torch
 from torch.utils.data import Dataset
 import argparse
@@ -168,7 +170,39 @@ class CharCorruptionDataset(Dataset):
 
     def __getitem__(self, idx):
         # TODO [part e]: see spec above
-        raise NotImplementedError
+       
+        ### (0) retrieve doc
+        doc = self.data[idx]
+        
+        ### (1) truncate length
+        len_trunc = int(random.uniform(4, int(self.block_size * (7/8) + 1)))
+        doc = doc[:len_trunc]
+        len_doc = len(doc)
+
+        ### (2) separate into prefix, masked_content, suffix
+        # choose masked_content length, define indices
+        loc_ = (1/4) * len_doc
+        scale_ = (1/4) * len_doc / 5
+        len_mask = max(1, int(np.random.normal(loc=loc_, scale=scale_)))
+        idx_start = int(random.uniform(0, len_doc - len_mask - 1))
+        idx_end = idx_start + len_mask
+        prefix = doc[0 : idx_start]
+        masked_content = doc[idx_start:idx_end]
+        suffix = doc[idx_end:]
+
+        ### (3) rearrange
+        masked_str = prefix + self.MASK_CHAR + suffix + self.MASK_CHAR + masked_content
+        masked_str = masked_str + self.PAD_CHAR*(self.block_size - len(masked_str))
+        assert len(masked_str) == self.block_size
+
+        ### (4) return X (all but the end char) and Y (all but the first char)
+        x, y = masked_str[:-1], masked_str[1:]
+
+        ### (5) encode as tensors of appropriate type
+        x = torch.tensor([self.stoi[xx] for xx in x], dtype=torch.long)
+        y = torch.tensor([self.stoi[yy] for yy in y], dtype=torch.long)
+
+        return x, y
 
 """
 Code under here is strictly for your debugging purposes; feel free to modify
