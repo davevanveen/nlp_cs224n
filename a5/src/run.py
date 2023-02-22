@@ -67,8 +67,14 @@ if args.variant == 'vanilla':
     model = model.GPT(mconf)
 
 elif args.variant == 'perceiver':
+    # [part g] Make some other model here
     # set mconf.perceiver, and mconf.bottleneck_dim parameters appropriately.
-    pass # [part g] Make some other model here
+    mconf = model.GPTConfig(pretrain_dataset.vocab_size,
+                            pretrain_dataset.block_size,
+                            n_layer=4, n_head=8, n_embd=256,
+                            perceiver=True,
+                            bottleneck_dim=args.bottleneck_dim)
+    model = model.GPT(mconf)
 
 else:
     raise ValueError("Unknown model variant")
@@ -84,16 +90,6 @@ if args.function == 'pretrain':
     #     1. Pretrain the model on this corpus
     #     2. Save the resulting model in args.writing_params_path
     
-    # - Make sure to use the following hyperparameters for pretraining:
-    # Hyperparameters for pretraining:
-    # max_epochs=650
-    # batch_size=128
-    # learning_rate=args.pretrain_lr
-    # lr_decay=True
-    # warmup_tokens=512*20
-    # final_tokens=200*len(pretrain_dataset)*block_size
-    # num_workers=4
-    # writer=writer 
     tconf = trainer.TrainerConfig(max_epochs=650, batch_size=128,
                                   learning_rate=args.pretrain_lr,
                                   lr_decay=True, warmup_tokens=512*20,
@@ -120,15 +116,6 @@ elif args.function == 'finetune':
     #     3. Save the resulting model in args.writing_params_path
 
     if args.reading_params_path is None: # finetune without pretraining
-    #     [part d] Hyperparameters for finetuning WITHOUT a pretrained model:
-    #         max_epochs=75
-    #         batch_size=256
-    #         learning_rate=args.finetune_lr
-    #         lr_decay=True
-    #         warmup_tokens=512*20
-    #         final_tokens=200*len(pretrain_dataset)*block_size
-    #         num_workers=4
-    #         writer=writer
         tconf = trainer.TrainerConfig(max_epochs=75, batch_size=256, 
                                       learning_rate=args.finetune_lr,
                                       lr_decay=True, warmup_tokens=512*20,
@@ -136,15 +123,6 @@ elif args.function == 'finetune':
                                       num_workers=4,
                                       writer=writer)
     else: # finetune with pretraining [part f]
-    #     [part f] Hyperparameters for finetuning WITH a pretrained model:
-    #         max_epochs=10
-    #         batch_size=256
-    #         learning_rate=args.finetune_lr
-    #         lr_decay=True
-    #         warmup_tokens=512*20
-    #         final_tokens=200*len(pretrain_dataset)*block_size
-    #         num_workers=4
-    #         writer=writer
     #     You can use the args.reading_params_path flag to switch between the
     #     number of epochs for each case.
         model.load_state_dict(torch.load(args.reading_params_path))
@@ -168,6 +146,7 @@ elif args.function == 'evaluate':
     assert args.reading_params_path is not None
     assert args.eval_corpus_path is not None
     model.load_state_dict(torch.load(args.reading_params_path))
+    model = model.to(device)
     correct = 0
     total = 0
     with open(args.outputs_path, 'w', encoding='utf-8') as fout:
